@@ -96,8 +96,6 @@ body{padding:18px}
 }
 .hero-kicker{font-size:11px;font-weight:900;letter-spacing:.18em;opacity:.68;margin-bottom:11px}
 .hero h2{margin:0;font-size:36px;line-height:1.18;letter-spacing:-.05em;word-break:break-word}
-.hero-sub{margin-top:10px;font-size:16px;font-weight:750;line-height:1.5;white-space:pre-wrap}
-.hero-desc{margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.12);font-size:13px;line-height:1.75;white-space:pre-wrap}
 
 /* 이미지 3장 */
 .main-images{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
@@ -106,7 +104,7 @@ body{padding:18px}
 .image-frame.small{height:370px}
 .image-frame.active{outline:3px solid #6382ed;outline-offset:-3px}
 .image-frame img{
-  position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
+  position:absolute;left:50%;top:50%;width:auto;height:auto;max-width:none;max-height:none;
   transform:translate(-50%,-50%) translate(0,0) scale(1);transform-origin:center;pointer-events:none
 }
 .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#8a95a8;font-size:13px;font-weight:750;line-height:1.6;padding:18px}
@@ -165,14 +163,6 @@ body{padding:18px}
         <label for="titleInput">캐릭터명</label>
         <input id="titleInput" type="text" value="CHARACTER NAME">
       </div>
-      <div class="field">
-        <label for="subtitleInput">한 줄 소개</label>
-        <input id="subtitleInput" type="text" value="캐릭터를 나타내는 짧은 문장을 적어주세요.">
-      </div>
-      <div class="field">
-        <label for="descInput">간단한 설명</label>
-        <textarea id="descInput">캐릭터의 핵심 설정이나 분위기를 짧게 적는 칸입니다.</textarea>
-      </div>
       <div class="color-grid">
         <div class="color-field">
           <label>상단 배경</label>
@@ -192,7 +182,7 @@ body{padding:18px}
     <section class="group">
       <h2 class="group-title"><span>2</span> 이미지</h2>
       <div id="imageControls"></div>
-      <div class="help">업로드한 이미지는 처음에는 잘리지 않고 전체가 보이도록 맞춰집니다. 확대 후 위치를 옮겼다가 다시 전체를 보려면 ‘전체보기’를 누르세요. PC에서는 마우스 휠로 확대·축소할 수 있습니다.</div>
+      <div class="help">업로드한 이미지는 원본 비율을 유지한 채 전체가 보이도록 맞춰집니다. 미리보기에서 조절한 비율과 위치가 PNG에도 동일하게 저장됩니다. 다시 맞추려면 ‘전체보기’를 누르세요.</div>
     </section>
 
     <section class="group">
@@ -242,8 +232,6 @@ body{padding:18px}
             <header class="hero" id="hero">
               <div class="hero-kicker">CHARACTER PROFILE</div>
               <h2 id="previewTitle">CHARACTER NAME</h2>
-              <div class="hero-sub" id="previewSubtitle"></div>
-              <div class="hero-desc" id="previewDesc"></div>
             </header>
 
             <section class="main-images">
@@ -301,10 +289,10 @@ body{padding:18px}
 
 <script>
 const imageStates={
-  img1:{src:"",x:0,y:0,scale:1},
-  img2:{src:"",x:0,y:0,scale:1},
-  img3:{src:"",x:0,y:0,scale:1},
-  img4:{src:"",x:0,y:0,scale:1}
+  img1:{src:"",x:0,y:0,scale:1,baseWidth:0,baseHeight:0},
+  img2:{src:"",x:0,y:0,scale:1,baseWidth:0,baseHeight:0},
+  img3:{src:"",x:0,y:0,scale:1,baseWidth:0,baseHeight:0},
+  img4:{src:"",x:0,y:0,scale:1,baseWidth:0,baseHeight:0}
 };
 const imageNames={img1:"세로 이미지 1",img2:"세로 이미지 2",img3:"세로 이미지 3",img4:"작은 이미지"};
 
@@ -316,8 +304,6 @@ let colorData={
 const $=id=>document.getElementById(id);
 const inputs={
   title:$("titleInput"),
-  subtitle:$("subtitleInput"),
-  desc:$("descInput"),
   heroBg:$("heroBgInput"),
   heroText:$("heroTextInput"),
   sheetBg:$("sheetBgInput"),
@@ -353,8 +339,27 @@ function renderImageControls(){
       if(!file)return;
       const reader=new FileReader();
       reader.onload=ev=>{
-        imageStates[key]={src:ev.target.result,x:0,y:0,scale:1};
-        updateImage(key);
+        const tempImage=new Image();
+        tempImage.onload=()=>{
+          const frame=document.querySelector(`.image-frame[data-key="${key}"]`);
+          const frameWidth=frame.clientWidth;
+          const frameHeight=frame.clientHeight;
+          const fitRatio=Math.min(
+            frameWidth/tempImage.naturalWidth,
+            frameHeight/tempImage.naturalHeight
+          );
+
+          imageStates[key]={
+            src:ev.target.result,
+            x:0,
+            y:0,
+            scale:1,
+            baseWidth:Math.round(tempImage.naturalWidth*fitRatio),
+            baseHeight:Math.round(tempImage.naturalHeight*fitRatio)
+          };
+          updateImage(key);
+        };
+        tempImage.src=ev.target.result;
       };
       reader.readAsDataURL(file);
     });
@@ -367,7 +372,7 @@ function renderImageControls(){
 
   document.querySelectorAll("[data-reset]").forEach(btn=>btn.onclick=()=>{
     const key=btn.dataset.reset;
-    imageStates[key]={src:"",x:0,y:0,scale:1};
+    imageStates[key]={src:"",x:0,y:0,scale:1,baseWidth:0,baseHeight:0};
     $(`upload-${key}`).value="";
     updateImage(key);
   });
@@ -389,6 +394,15 @@ function updateImage(key){
   img.src=state.src||"";
   img.style.display=state.src?"block":"none";
   holder.style.display=state.src?"none":"flex";
+
+  if(state.src&&state.baseWidth&&state.baseHeight){
+    img.style.width=`${state.baseWidth}px`;
+    img.style.height=`${state.baseHeight}px`;
+  }else{
+    img.style.width="auto";
+    img.style.height="auto";
+  }
+
   img.style.transform=`translate(-50%,-50%) translate(${state.x}px,${state.y}px) scale(${state.scale})`;
 
   $(`zoom-${key}`).value=state.scale;
@@ -397,8 +411,6 @@ function updateImage(key){
 
 function updatePreview(){
   $("previewTitle").textContent=inputs.title.value.trim()||"CHARACTER NAME";
-  $("previewSubtitle").textContent=inputs.subtitle.value.trim();
-  $("previewDesc").textContent=inputs.desc.value.trim();
 
   $("hero").style.setProperty("--hero-bg",inputs.heroBg.value);
   $("hero").style.setProperty("--hero-text",inputs.heroText.value);
@@ -537,10 +549,14 @@ $("saveBtn").onclick=async()=>{
   $("capture").classList.add("exporting");
 
   try{
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
     const canvas=await html2canvas($("capture"),{
       backgroundColor:null,
       scale:2,
-      useCORS:true
+      useCORS:true,
+      imageTimeout:0,
+      logging:false
     });
 
     const a=document.createElement("a");
@@ -557,8 +573,6 @@ $("saveBtn").onclick=async()=>{
 
 $("resetBtn").onclick=()=>{
   inputs.title.value="CHARACTER NAME";
-  inputs.subtitle.value="캐릭터를 나타내는 짧은 문장을 적어주세요.";
-  inputs.desc.value="캐릭터의 핵심 설정이나 분위기를 짧게 적는 칸입니다.";
   inputs.heroBg.value="#dfe8ff";
   inputs.heroText.value="#18264c";
   inputs.sheetBg.value="#ffffff";
@@ -568,7 +582,7 @@ $("resetBtn").onclick=()=>{
   inputs.memo.value="";
 
   Object.keys(imageStates).forEach(key=>{
-    imageStates[key]={src:"",x:0,y:0,scale:1};
+    imageStates[key]={src:"",x:0,y:0,scale:1,baseWidth:0,baseHeight:0};
     $(`upload-${key}`).value="";
     updateImage(key);
   });
