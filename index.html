@@ -106,7 +106,7 @@ body{padding:18px}
 .image-frame.small{height:370px}
 .image-frame.active{outline:3px solid #6382ed;outline-offset:-3px}
 .image-frame img{
-  position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:cover;
+  position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
   transform:translate(-50%,-50%) translate(0,0) scale(1);transform-origin:center;pointer-events:none
 }
 .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#8a95a8;font-size:13px;font-weight:750;line-height:1.6;padding:18px}
@@ -192,7 +192,7 @@ body{padding:18px}
     <section class="group">
       <h2 class="group-title"><span>2</span> 이미지</h2>
       <div id="imageControls"></div>
-      <div class="help">이미지를 올린 뒤 미리보기 안에서 드래그해 위치를 조절합니다. PC에서는 마우스 휠로도 확대·축소할 수 있습니다.</div>
+      <div class="help">업로드한 이미지는 처음에는 잘리지 않고 전체가 보이도록 맞춰집니다. 확대 후 위치를 옮겼다가 다시 전체를 보려면 ‘전체보기’를 누르세요. PC에서는 마우스 휠로 확대·축소할 수 있습니다.</div>
     </section>
 
     <section class="group">
@@ -342,7 +342,7 @@ function renderImageControls(){
       <div class="zoom-row">
         <input id="zoom-${key}" type="range" min=".5" max="3" step=".01" value="1">
         <div class="zoom-value" id="zoom-value-${key}">100%</div>
-        <button class="small-btn" type="button" data-center="${key}">가운데</button>
+        <button class="small-btn" type="button" data-fit="${key}">전체보기</button>
       </div>
     </div>
   `).join("");
@@ -372,10 +372,11 @@ function renderImageControls(){
     updateImage(key);
   });
 
-  document.querySelectorAll("[data-center]").forEach(btn=>btn.onclick=()=>{
-    const key=btn.dataset.center;
+  document.querySelectorAll("[data-fit]").forEach(btn=>btn.onclick=()=>{
+    const key=btn.dataset.fit;
     imageStates[key].x=0;
     imageStates[key].y=0;
+    imageStates[key].scale=1;
     updateImage(key);
   });
 }
