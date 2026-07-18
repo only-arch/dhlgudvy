@@ -485,7 +485,10 @@ function renderOneColorEditor(type){
       const t=input.dataset.colorType;
       const i=Number(input.dataset.colorIndex);
       colorData[t][i]=input.value;
-      renderColorEditors();
+
+      const codeBox=input.closest(".color-row").querySelector(".color-code");
+      if(codeBox) codeBox.textContent=input.value.toUpperCase();
+
       renderColorPreview();
     });
   });
