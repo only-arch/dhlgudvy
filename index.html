@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>캐릭터 프로필 이미지 메이커</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box}
+:root{
+  --page:#edf1f6;
+  --panel:#ffffff;
+  --line:#d9e0ea;
+  --ink:#172033;
+  --muted:#657087;
+  --accent:#496fe8;
+  --soft:#f5f7fb;
+}
+html,body{margin:0;min-height:100%;background:var(--page);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+button,input,textarea{font:inherit}
+body{padding:18px}
+.app{max-width:1480px;margin:auto;display:grid;grid-template-columns:390px minmax(0,1fr);gap:20px;align-items:start}
+
+/* 편집 패널 */
+.editor{
+  position:sticky;top:18px;max-height:calc(100vh - 36px);overflow:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:20px;
+  box-shadow:0 16px 50px rgba(34,48,79,.10)
+}
+.editor::-webkit-scrollbar{width:10px}
+.editor::-webkit-scrollbar-thumb{background:#cbd3df;border:3px solid #fff;border-radius:20px}
+.editor-head{padding:2px 2px 16px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.editor-head h1{margin:0 0 7px;font-size:23px;letter-spacing:-.04em}
+.editor-head p{margin:0;color:var(--muted);font-size:13px;line-height:1.65}
+.group{margin-bottom:14px;border:1px solid var(--line);border-radius:17px;padding:15px;background:#fff}
+.group:last-child{margin-bottom:0}
+.group-title{display:flex;align-items:center;gap:8px;margin:0 0 14px;font-size:15px;font-weight:850;letter-spacing:-.02em}
+.group-title span{display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:#edf2ff;color:var(--accent);font-size:12px}
+.field{margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;margin:0 0 7px;font-size:12px;font-weight:800;color:#364258}
+.field input[type=text],.field textarea{
+  width:100%;border:1px solid #cfd7e3;border-radius:11px;background:#fff;color:var(--ink);
+  padding:11px 12px;outline:none;transition:.15s
+}
+.field input[type=text]:focus,.field textarea:focus{border-color:#7892ee;box-shadow:0 0 0 3px rgba(73,111,232,.12)}
+.field textarea{min-height:84px;resize:vertical;line-height:1.65}
+.color-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.color-field{border:1px solid #d4dce7;border-radius:11px;padding:8px;background:var(--soft)}
+.color-field label{margin:0 0 6px;font-size:11px}
+.color-field input{width:100%;height:34px;border:0;background:transparent;padding:0;cursor:pointer}
+
+.image-control{padding:12px;border:1px solid #dbe2ec;border-radius:13px;background:var(--soft);margin-bottom:9px}
+.image-control:last-child{margin-bottom:0}
+.image-control-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.image-control-head strong{font-size:13px}
+.file-input{width:100%;font-size:12px;color:#596579;margin-bottom:9px}
+.zoom-row{display:grid;grid-template-columns:1fr 54px 58px;gap:8px;align-items:center}
+.zoom-row input{width:100%}
+.zoom-value{font-size:12px;font-weight:800;text-align:center;color:#44506a}
+.small-btn{border:1px solid #d2dae5;background:#fff;color:#3d4960;border-radius:9px;padding:7px 9px;font-size:11px;font-weight:800;cursor:pointer}
+.small-btn:hover{background:#edf2f8}
+.help{margin-top:10px;padding:10px 11px;background:#f0f4ff;border-radius:11px;color:#53627e;font-size:11px;line-height:1.6}
+
+.color-editor{display:grid;gap:12px}
+.color-category{border:1px solid #dbe2ec;border-radius:14px;background:var(--soft);padding:12px}
+.color-category-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.color-category-head strong{font-size:13px}
+.add-color-btn{border:1px solid #cdd6e4;background:#fff;color:#3f4d66;border-radius:9px;padding:7px 10px;font-size:11px;font-weight:850;cursor:pointer}
+.color-list{display:grid;gap:8px}
+.color-row{display:grid;grid-template-columns:56px 1fr 50px;gap:8px;align-items:center}
+.color-row input[type=color]{width:100%;height:40px;border:1px solid #cfd7e3;border-radius:9px;background:#fff;padding:3px}
+.color-code{border:1px solid #cfd7e3;border-radius:9px;background:#fff;padding:10px;font-size:11px;font-weight:800;color:#596579;text-align:center;text-transform:uppercase}
+.remove-color-btn{border:0;border-radius:9px;background:#fff0f0;color:#b33d3d;padding:10px 6px;font-size:11px;font-weight:850;cursor:pointer}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.action{border:0;border-radius:12px;padding:12px 10px;font-weight:850;cursor:pointer}
+.action.save{background:var(--accent);color:#fff}
+.action.reset{background:#edf1f6;color:#344158}
+
+/* 미리보기 */
+.preview-shell{min-width:0}
+.preview-note{max-width:940px;margin:0 auto 10px;color:#657087;font-size:12px;text-align:right}
+.preview-scroll{overflow:auto;padding:4px 4px 24px}
+.preview-inner{min-width:930px;display:flex;justify-content:center}
+#capture{
+  width:880px;background:#fff;border:1px solid #d9e0e9;border-radius:28px;overflow:hidden;
+  box-shadow:0 18px 58px rgba(31,43,72,.13)
+}
+.sheet{padding:24px;background:var(--sheet-bg,#fff)}
+
+/* 출력물 상단 */
+.hero{
+  padding:28px 30px;border-radius:22px;background:var(--hero-bg,#dfe8ff);
+  color:var(--hero-text,#18264c);margin-bottom:18px
+}
+.hero-kicker{font-size:11px;font-weight:900;letter-spacing:.18em;opacity:.68;margin-bottom:11px}
+.hero h2{margin:0;font-size:36px;line-height:1.18;letter-spacing:-.05em;word-break:break-word}
+.hero-sub{margin-top:10px;font-size:16px;font-weight:750;line-height:1.5;white-space:pre-wrap}
+.hero-desc{margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,.12);font-size:13px;line-height:1.75;white-space:pre-wrap}
+
+/* 이미지 3장 */
+.main-images{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.visual-card{border:1px solid #d8e0ea;border-radius:18px;overflow:hidden;background:#fff}
+.image-frame{height:530px;position:relative;overflow:hidden;background:#eef2f6;cursor:grab;touch-action:none;user-select:none}
+.image-frame.small{height:370px}
+.image-frame.active{outline:3px solid #6382ed;outline-offset:-3px}
+.image-frame img{
+  position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:cover;
+  transform:translate(-50%,-50%) translate(0,0) scale(1);transform-origin:center;pointer-events:none
+}
+.placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#8a95a8;font-size:13px;font-weight:750;line-height:1.6;padding:18px}
+.card-caption{padding:11px 13px;border-top:1px solid #dfe5ed;color:#58657b;font-size:11px;font-weight:900;letter-spacing:.12em}
+
+/* 하단 정보 */
+.lower{display:grid;grid-template-columns:330px 1fr;gap:14px;margin-bottom:16px}
+.profile-card{border:1px solid #d8e0ea;border-radius:18px;background:#fff;padding:21px}
+.section-label{font-size:11px;font-weight:900;letter-spacing:.16em;color:#72809a;margin-bottom:9px}
+.profile-card h3,.color-guide h3{margin:0 0 16px;font-size:22px;letter-spacing:-.04em}
+.info-list{display:grid;gap:0;border-top:1px solid #dfe5ed}
+.info-item{display:grid;grid-template-columns:92px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid #e4e9f0}
+.info-label{font-size:12px;font-weight:850;color:#657188}
+.info-value{font-size:13px;line-height:1.65;color:#202a3c;white-space:pre-wrap;word-break:break-word}
+.empty-info{padding:18px 0;color:#8a94a6;font-size:12px;line-height:1.6}
+.memo{margin-top:17px;background:#f5f7fa;border-radius:13px;padding:14px}
+.memo-title{font-size:11px;font-weight:900;color:#647087;margin-bottom:7px}
+.memo-text{font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:#273247}
+
+/* 머리·눈 색상표 */
+.color-guide{border:1px solid #d8e0ea;border-radius:18px;background:#fff;padding:20px}
+.color-groups{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.color-group{border:1px solid #dde4ed;border-radius:15px;background:#fafbfd;padding:14px}
+.color-group-title{font-size:12px;font-weight:900;color:#4d5970;margin-bottom:11px}
+.swatch-list{display:flex;flex-wrap:wrap;gap:10px}
+.swatch-item{display:flex;align-items:center;gap:8px;min-width:0}
+.swatch{width:42px;height:42px;border-radius:12px;border:1px solid rgba(0,0,0,.09);flex:0 0 auto}
+.swatch-code{font-size:10px;font-weight:800;color:#788397;text-transform:uppercase}
+.empty-colors{font-size:12px;color:#929bad;padding:8px 0}
+
+.exporting .image-frame.active{outline:0!important}
+
+@media(max-width:1200px){
+  .app{grid-template-columns:1fr}
+  .editor{position:static;max-height:none}
+}
+@media(max-width:650px){
+  body{padding:10px}
+  .editor{padding:14px;border-radius:17px}
+  .color-grid,.color-groups{grid-template-columns:1fr}
+  .actions{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="editor">
+    <div class="editor-head">
+      <h1>캐릭터 프로필 메이커</h1>
+      <p>정보를 입력하고 이미지를 직접 움직여 한 장의 세로 프로필 이미지로 저장합니다.</p>
+    </div>
+
+    <section class="group">
+      <h2 class="group-title"><span>1</span> 상단 정보</h2>
+      <div class="field">
+        <label for="titleInput">캐릭터명</label>
+        <input id="titleInput" type="text" value="CHARACTER NAME">
+      </div>
+      <div class="field">
+        <label for="subtitleInput">한 줄 소개</label>
+        <input id="subtitleInput" type="text" value="캐릭터를 나타내는 짧은 문장을 적어주세요.">
+      </div>
+      <div class="field">
+        <label for="descInput">간단한 설명</label>
+        <textarea id="descInput">캐릭터의 핵심 설정이나 분위기를 짧게 적는 칸입니다.</textarea>
+      </div>
+      <div class="color-grid">
+        <div class="color-field">
+          <label>상단 배경</label>
+          <input id="heroBgInput" type="color" value="#dfe8ff">
+        </div>
+        <div class="color-field">
+          <label>상단 글자</label>
+          <input id="heroTextInput" type="color" value="#18264c">
+        </div>
+        <div class="color-field">
+          <label>전체 배경</label>
+          <input id="sheetBgInput" type="color" value="#ffffff">
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2 class="group-title"><span>2</span> 이미지</h2>
+      <div id="imageControls"></div>
+      <div class="help">이미지를 올린 뒤 미리보기 안에서 드래그해 위치를 조절합니다. PC에서는 마우스 휠로도 확대·축소할 수 있습니다.</div>
+    </section>
+
+    <section class="group">
+      <h2 class="group-title"><span>3</span> 외형 정보</h2>
+      <div class="field"><label>키 · 체형</label><input id="bodyInput" type="text" placeholder="예: 170cm · 마른 체형"></div>
+      <div class="field"><label>특징</label><input id="featureInput" type="text" placeholder="예: 왼쪽 눈 아래 점, 귀걸이"></div>
+      <div class="field"><label>기타 외형</label><textarea id="appearanceInput" placeholder="헤어스타일, 의상, 분위기 등을 적어주세요."></textarea></div>
+      <div class="field"><label>자유 메모</label><textarea id="memoInput" placeholder="성격, 말투, 설정 등을 적어주세요."></textarea></div>
+    </section>
+
+    <section class="group">
+      <h2 class="group-title"><span>4</span> 머리 · 눈 색상</h2>
+      <div class="color-editor">
+        <div class="color-category">
+          <div class="color-category-head">
+            <strong>머리색</strong>
+            <button class="add-color-btn" type="button" data-add-color="hair">+ 색 추가</button>
+          </div>
+          <div class="color-list" id="hairColorEditor"></div>
+        </div>
+
+        <div class="color-category">
+          <div class="color-category-head">
+            <strong>눈색</strong>
+            <button class="add-color-btn" type="button" data-add-color="eye">+ 색 추가</button>
+          </div>
+          <div class="color-list" id="eyeColorEditor"></div>
+        </div>
+      </div>
+      <div class="help">투톤 머리나 오드아이처럼 색이 여러 개일 경우 색 추가 버튼을 눌러 여러 색을 등록할 수 있습니다.</div>
+    </section>
+
+    <section class="group">
+      <div class="actions">
+        <button class="action save" id="saveBtn" type="button">PNG 저장</button>
+        <button class="action reset" id="resetBtn" type="button">전체 초기화</button>
+      </div>
+    </section>
+  </aside>
+
+  <main class="preview-shell">
+    <div class="preview-note">완성 이미지 미리보기</div>
+    <div class="preview-scroll">
+      <div class="preview-inner">
+        <div id="capture">
+          <div class="sheet" id="sheet">
+            <header class="hero" id="hero">
+              <div class="hero-kicker">CHARACTER PROFILE</div>
+              <h2 id="previewTitle">CHARACTER NAME</h2>
+              <div class="hero-sub" id="previewSubtitle"></div>
+              <div class="hero-desc" id="previewDesc"></div>
+            </header>
+
+            <section class="main-images">
+              <div class="visual-card">
+                <div class="image-frame" data-key="img1"><img id="preview-img1" alt=""><div class="placeholder" id="placeholder-img1">세로 이미지 1</div></div>
+                <div class="card-caption">IMAGE 01</div>
+              </div>
+              <div class="visual-card">
+                <div class="image-frame" data-key="img2"><img id="preview-img2" alt=""><div class="placeholder" id="placeholder-img2">세로 이미지 2</div></div>
+                <div class="card-caption">IMAGE 02</div>
+              </div>
+              <div class="visual-card">
+                <div class="image-frame" data-key="img3"><img id="preview-img3" alt=""><div class="placeholder" id="placeholder-img3">세로 이미지 3</div></div>
+                <div class="card-caption">IMAGE 03</div>
+              </div>
+            </section>
+
+            <section class="lower">
+              <div class="visual-card">
+                <div class="image-frame small" data-key="img4"><img id="preview-img4" alt=""><div class="placeholder" id="placeholder-img4">디테일 이미지</div></div>
+                <div class="card-caption">DETAIL IMAGE</div>
+              </div>
+
+              <div class="profile-card">
+                <div class="section-label">APPEARANCE</div>
+                <h3>외형 정보</h3>
+                <div class="info-list" id="infoList"></div>
+                <div class="memo">
+                  <div class="memo-title">MEMO</div>
+                  <div class="memo-text" id="previewMemo">자유 메모를 입력해주세요.</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="color-guide">
+              <div class="section-label">COLOR GUIDE</div>
+              <h3>머리 · 눈 색상</h3>
+              <div class="color-groups">
+                <div class="color-group">
+                  <div class="color-group-title">머리색</div>
+                  <div class="swatch-list" id="hairColorPreview"></div>
+                </div>
+                <div class="color-group">
+                  <div class="color-group-title">눈색</div>
+                  <div class="swatch-list" id="eyeColorPreview"></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const imageStates={
+  img1:{src:"",x:0,y:0,scale:1},
+  img2:{src:"",x:0,y:0,scale:1},
+  img3:{src:"",x:0,y:0,scale:1},
+  img4:{src:"",x:0,y:0,scale:1}
+};
+const imageNames={img1:"세로 이미지 1",img2:"세로 이미지 2",img3:"세로 이미지 3",img4:"작은 이미지"};
+
+let colorData={
+  hair:["#c7b1f5"],
+  eye:["#7ccbeb"]
+};
+
+const $=id=>document.getElementById(id);
+const inputs={
+  title:$("titleInput"),
+  subtitle:$("subtitleInput"),
+  desc:$("descInput"),
+  heroBg:$("heroBgInput"),
+  heroText:$("heroTextInput"),
+  sheetBg:$("sheetBgInput"),
+  body:$("bodyInput"),
+  feature:$("featureInput"),
+  appearance:$("appearanceInput"),
+  memo:$("memoInput")
+};
+
+function esc(value){
+  return String(value).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+
+function renderImageControls(){
+  $("imageControls").innerHTML=Object.keys(imageStates).map(key=>`
+    <div class="image-control">
+      <div class="image-control-head">
+        <strong>${imageNames[key]}</strong>
+        <button class="small-btn" type="button" data-reset="${key}">초기화</button>
+      </div>
+      <input class="file-input" id="upload-${key}" type="file" accept="image/*">
+      <div class="zoom-row">
+        <input id="zoom-${key}" type="range" min=".5" max="3" step=".01" value="1">
+        <div class="zoom-value" id="zoom-value-${key}">100%</div>
+        <button class="small-btn" type="button" data-center="${key}">가운데</button>
+      </div>
+    </div>
+  `).join("");
+
+  Object.keys(imageStates).forEach(key=>{
+    $(`upload-${key}`).addEventListener("change",e=>{
+      const file=e.target.files[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        imageStates[key]={src:ev.target.result,x:0,y:0,scale:1};
+        updateImage(key);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    $(`zoom-${key}`).addEventListener("input",e=>{
+      imageStates[key].scale=Number(e.target.value);
+      updateImage(key);
+    });
+  });
+
+  document.querySelectorAll("[data-reset]").forEach(btn=>btn.onclick=()=>{
+    const key=btn.dataset.reset;
+    imageStates[key]={src:"",x:0,y:0,scale:1};
+    $(`upload-${key}`).value="";
+    updateImage(key);
+  });
+
+  document.querySelectorAll("[data-center]").forEach(btn=>btn.onclick=()=>{
+    const key=btn.dataset.center;
+    imageStates[key].x=0;
+    imageStates[key].y=0;
+    updateImage(key);
+  });
+}
+
+function updateImage(key){
+  const state=imageStates[key];
+  const img=$(`preview-${key}`);
+  const holder=$(`placeholder-${key}`);
+
+  img.src=state.src||"";
+  img.style.display=state.src?"block":"none";
+  holder.style.display=state.src?"none":"flex";
+  img.style.transform=`translate(-50%,-50%) translate(${state.x}px,${state.y}px) scale(${state.scale})`;
+
+  $(`zoom-${key}`).value=state.scale;
+  $(`zoom-value-${key}`).textContent=`${Math.round(state.scale*100)}%`;
+}
+
+function updatePreview(){
+  $("previewTitle").textContent=inputs.title.value.trim()||"CHARACTER NAME";
+  $("previewSubtitle").textContent=inputs.subtitle.value.trim();
+  $("previewDesc").textContent=inputs.desc.value.trim();
+
+  $("hero").style.setProperty("--hero-bg",inputs.heroBg.value);
+  $("hero").style.setProperty("--hero-text",inputs.heroText.value);
+  $("sheet").style.setProperty("--sheet-bg",inputs.sheetBg.value);
+
+  const rows=[
+    ["키 · 체형",inputs.body.value.trim()],
+    ["특징",inputs.feature.value.trim()],
+    ["기타 외형",inputs.appearance.value.trim()]
+  ].filter(v=>v[1]);
+
+  $("infoList").innerHTML=rows.length
+    ? rows.map(([label,value])=>`
+      <div class="info-item">
+        <div class="info-label">${label}</div>
+        <div class="info-value">${esc(value)}</div>
+      </div>
+    `).join("")
+    : `<div class="empty-info">왼쪽 입력란에 키, 체형, 특징과 기타 외형 정보를 적으면 이곳에 표시됩니다.</div>`;
+
+  $("previewMemo").textContent=inputs.memo.value.trim()||"자유 메모를 입력해주세요.";
+}
+
+Object.values(inputs).forEach(input=>input.addEventListener("input",updatePreview));
+
+let activeKey=null;
+let dragging=false;
+let startPointer={x:0,y:0};
+let startImage={x:0,y:0};
+
+document.querySelectorAll(".image-frame").forEach(frame=>{
+  const key=frame.dataset.key;
+
+  frame.addEventListener("pointerdown",e=>{
+    document.querySelectorAll(".image-frame").forEach(v=>v.classList.remove("active"));
+    frame.classList.add("active");
+    activeKey=key;
+    dragging=true;
+    startPointer={x:e.clientX,y:e.clientY};
+    startImage={x:imageStates[key].x,y:imageStates[key].y};
+    frame.setPointerCapture(e.pointerId);
+  });
+
+  frame.addEventListener("pointermove",e=>{
+    if(!dragging||activeKey!==key)return;
+    imageStates[key].x=startImage.x+(e.clientX-startPointer.x);
+    imageStates[key].y=startImage.y+(e.clientY-startPointer.y);
+    updateImage(key);
+  });
+
+  frame.addEventListener("pointerup",()=>dragging=false);
+  frame.addEventListener("pointercancel",()=>dragging=false);
+
+  frame.addEventListener("wheel",e=>{
+    e.preventDefault();
+    const amount=e.deltaY<0?.06:-.06;
+    imageStates[key].scale=Math.min(3,Math.max(.5,imageStates[key].scale+amount));
+    updateImage(key);
+  },{passive:false});
+});
+
+function renderColorEditors(){
+  renderOneColorEditor("hair");
+  renderOneColorEditor("eye");
+}
+
+function renderOneColorEditor(type){
+  const target=type==="hair"?$("hairColorEditor"):$("eyeColorEditor");
+
+  target.innerHTML=colorData[type].map((color,index)=>`
+    <div class="color-row">
+      <input type="color" value="${color}" data-color-type="${type}" data-color-index="${index}">
+      <div class="color-code">${color.toUpperCase()}</div>
+      <button class="remove-color-btn" type="button" data-remove-color-type="${type}" data-remove-color-index="${index}">삭제</button>
+    </div>
+  `).join("");
+
+  if(!colorData[type].length){
+    target.innerHTML=`<div class="empty-colors">등록된 색상이 없습니다.</div>`;
+  }
+
+  target.querySelectorAll("[data-color-type]").forEach(input=>{
+    input.addEventListener("input",()=>{
+      const t=input.dataset.colorType;
+      const i=Number(input.dataset.colorIndex);
+      colorData[t][i]=input.value;
+      renderColorEditors();
+      renderColorPreview();
+    });
+  });
+
+  target.querySelectorAll("[data-remove-color-type]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const t=btn.dataset.removeColorType;
+      const i=Number(btn.dataset.removeColorIndex);
+      colorData[t].splice(i,1);
+      renderColorEditors();
+      renderColorPreview();
+    });
+  });
+}
+
+document.querySelectorAll("[data-add-color]").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const type=btn.dataset.addColor;
+    colorData[type].push(type==="hair"?"#cccccc":"#999999");
+    renderColorEditors();
+    renderColorPreview();
+  });
+});
+
+function renderColorPreview(){
+  renderOneColorPreview("hair");
+  renderOneColorPreview("eye");
+}
+
+function renderOneColorPreview(type){
+  const target=type==="hair"?$("hairColorPreview"):$("eyeColorPreview");
+  const colors=colorData[type];
+
+  target.innerHTML=colors.length
+    ? colors.map(color=>`
+      <div class="swatch-item">
+        <div class="swatch" style="background:${color}"></div>
+        <div class="swatch-code">${color.toUpperCase()}</div>
+      </div>
+    `).join("")
+    : `<div class="empty-colors">등록된 색상이 없습니다.</div>`;
+}
+
+$("saveBtn").onclick=async()=>{
+  document.querySelectorAll(".image-frame").forEach(v=>v.classList.remove("active"));
+  $("capture").classList.add("exporting");
+
+  try{
+    const canvas=await html2canvas($("capture"),{
+      backgroundColor:null,
+      scale:2,
+      useCORS:true
+    });
+
+    const a=document.createElement("a");
+    a.download=`character-profile-${Date.now()}.png`;
+    a.href=canvas.toDataURL("image/png");
+    a.click();
+  }catch(err){
+    alert("이미지 저장 중 오류가 발생했습니다.");
+    console.error(err);
+  }finally{
+    $("capture").classList.remove("exporting");
+  }
+};
+
+$("resetBtn").onclick=()=>{
+  inputs.title.value="CHARACTER NAME";
+  inputs.subtitle.value="캐릭터를 나타내는 짧은 문장을 적어주세요.";
+  inputs.desc.value="캐릭터의 핵심 설정이나 분위기를 짧게 적는 칸입니다.";
+  inputs.heroBg.value="#dfe8ff";
+  inputs.heroText.value="#18264c";
+  inputs.sheetBg.value="#ffffff";
+  inputs.body.value="";
+  inputs.feature.value="";
+  inputs.appearance.value="";
+  inputs.memo.value="";
+
+  Object.keys(imageStates).forEach(key=>{
+    imageStates[key]={src:"",x:0,y:0,scale:1};
+    $(`upload-${key}`).value="";
+    updateImage(key);
+  });
+
+  colorData={
+    hair:["#c7b1f5"],
+    eye:["#7ccbeb"]
+  };
+
+  renderColorEditors();
+  renderColorPreview();
+  updatePreview();
+};
+
+renderImageControls();
+Object.keys(imageStates).forEach(updateImage);
+renderColorEditors();
+renderColorPreview();
+updatePreview();
+</script>
+</body>
+</html>
